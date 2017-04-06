@@ -1,0 +1,6 @@
+UltraSchall		KEYWORD1
+USensor			KEYWORD1
+SonarPing		KEYWORD2
+PingToDistance		KEYWORD2
+SonarPingDistance	KEYWORD2
+CheckForObjects		KEYWORD2

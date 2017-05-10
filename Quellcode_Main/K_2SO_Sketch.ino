@@ -52,7 +52,8 @@ int lastSpeedR = 0;
 int lastSpeedL = 0;
  
 boolean steht = true;
- 
+boolean vorwaerts = false;
+
 Motor MOTOR_R(rEnable, rPhase[0], rPhase[1]);
 Motor MOTOR_L(lEnable, lPhase[0], lPhase[1]);
 
@@ -131,6 +132,7 @@ void Control(int bt_input)
       lastSpeedL = MOTOR_L.Give_Speed();
       BT.println("Bluetooth Rückmeldung : Vorwärts");
       steht = false;
+      vorwaerts = true;
     }
     else
     {
@@ -144,6 +146,7 @@ void Control(int bt_input)
         lastSpeedL = MOTOR_L.Give_Speed();
         BT.println("Bluetooth Rückmeldung : Rückwärts");
         steht = false;
+        vorwaerts = false;
       }
       else
       {
@@ -216,7 +219,7 @@ void Notbremse()
   do{/* Platzhalter */}while(pause>millis());
   Control('0');
   Control('4');
-  pause = millis() + 1350;
+  pause = millis() + 2500;
   do{/* Platzhalter */}while(pause>millis());
   Control('0');
 }
@@ -313,7 +316,7 @@ void loop()
     BT.println(gotten_bt);
     Control(gotten_bt); //Fahren
   }
-    if(!steht)
+    if(!steht && vorwaerts)
     {
        if(TestPAUSE == 0)
        {

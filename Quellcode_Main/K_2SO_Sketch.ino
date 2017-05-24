@@ -29,6 +29,21 @@
 
 #define BT Serial1 //BT wird mit Serial1 gesetzt
 
+// RFID einbinden
+#include <SPI.h> // SPI-Bibiothek hinzufügen
+#include <MFRC522.h> // RFID-Bibiothek hinzufügen
+
+#define SDA_Pin 53
+#define SCK_Pin 52
+#define MOSI_Pin 51
+#define MISO_Pin 50
+#define RST_Pin 5
+
+MFRC522 mfrc522(SDA_Pin, RST_Pin); // RFID-Empfänger benennen
+
+const int RFID_UID[4] = { 35, 92, 53, 91};
+//##############
+
 const int SafeDistance = 30;
 
 double TestPAUSE = 0;
@@ -53,6 +68,7 @@ int lastSpeedL = 0;
  
 boolean steht = true;
 boolean vorwaerts = false;
+boolean Freigabe = false;
 
 Motor MOTOR_R(rEnable, rPhase[0], rPhase[1]);
 Motor MOTOR_L(lEnable, lPhase[0], lPhase[1]);
@@ -66,7 +82,12 @@ void setup()
   //Bluetooth initialisieren
   BT.begin(9600);
   BT.println("Bluetooth initialized");
- 
+  
+  pinMode(SDA_Pin, OUTPUT);
+  
+  Serial.begin(9600); // Serielle Verbindung starten (Monitor)
+  SPI.begin(); // SPI-Verbindung aufbauen
+  mfrc522.PCD_Init(); // Initialisierung des RFID-Empfängers
 }
 
 void Control(int bt_input)
@@ -309,30 +330,110 @@ void Ausweichen(bool FRONT, bool LEFT, bool RIGHT)
 }
 void loop()
 {
-  if(BT.available())
-  {
-    gotten_bt = BT.read();
-    BT.println("Bluetooth Rückmeldung : Hat folgenden Wert empfangen: ");
-    BT.println(gotten_bt);
-    Control(gotten_bt); //Fahren
-  }
-    if(!steht && vorwaerts)
+  if(mfrc522.PICC_IsNewCardPresent())
+  {  
+    if(BT.available())
     {
-       if(TestPAUSE == 0)
-       {
-          TestPAUSE = millis() + 10;
-       };
-       
-       if(millis() >= TestPAUSE)
-       {
-         FOUND_OBJ_FRONT = SENSOR_FRONT.CheckForObjects(SafeDistance);
-         FOUND_OBJ_R = SENSOR_R.CheckForObjects(SafeDistance+10);
-         FOUND_OBJ_L = SENSOR_L.CheckForObjects(SafeDistance+10);
-//         float testEntfernung = SENSOR_FRONT.SonarPingDistance();
-//         BT.print("Entfernung: ");
-//         BT.println(testEntfernung);
-         Ausweichen(FOUND_OBJ_FRONT, FOUND_OBJ_R, FOUND_OBJ_L);
-         TestPAUSE = millis() + 10;
-       };
-    };
+      if(BT.read() == '0')
+      {
+        if (mfrc522.PICC_ReadCardSerial()) // Wenn ein RFID-Sender ausgewählt wurde
+        { 
+      
+          Serial.print("Die ID des RFID-TAGS lautet: "); // "Die ID des RFID-TAGS lautet:" wird auf den Serial Monitor geschrieben.
+    
+          for (byte i = 0; i < mfrc522.uid.size; i++)
+          {
+            Serial.print(mfrc522.uid.uidByte[i], HEX); // Dann wird die UID ausgelesen, die aus vier einzelnen Blöcken besteht und der Reihe nach an den Serial Monitor gesendet. Die Endung Hex bedeutet, dass die vier Blöcke der UID als HEX-Zahl (also auch mit Buchstaben) ausgegeben wird
+            if(i < (mfrc522.uid.size-1))
+            {
+              Serial.print(":"); // Der Befehl „Serial.print(" ");“ sorgt dafür, dass zwischen den einzelnen ausgelesenen Blöcken ein Leerzeichen steht.
+            }
+            //Serial.print(mfrc522.uid.uidByte[i]);
+          }
+          Serial.println("");
+          if( ((mfrc522.uid.uidByte[0]) == (RFID_UID[0])) && ((mfrc522.uid.uidByte[1]) == (RFID_UID[1])) && ((mfrc522.uid.uidByte[2]) == (RFID_UID[2])) && ((mfrc522.uid.uidByte[3]) == (RFID_UID[3])))
+          {
+            if(Freigabe)
+            {
+              Serial.println("Freigabe gewollt gesperrt"); 
+              Freigabe = false;
+            }
+            else
+            {
+             Serial.println("Freigabe true"); 
+             Freigabe = true; 
+            }
+          }
+          else
+          {
+            Serial.println("Freigabe false"); 
+            Freigabe = false;
+          }
+        }
+       }
+    }
+  }
+  if(Freigabe)
+  {
+    if(BT.available())
+    {
+      if (mfrc522.PICC_ReadCardSerial()) // Wenn ein RFID-Sender ausgewählt wurde
+        { 
+      
+          Serial.print("Die ID des RFID-TAGS lautet: "); // "Die ID des RFID-TAGS lautet:" wird auf den Serial Monitor geschrieben.
+    
+          for (byte i = 0; i < mfrc522.uid.size; i++)
+          {
+            Serial.print(mfrc522.uid.uidByte[i], HEX); // Dann wird die UID ausgelesen, die aus vier einzelnen Blöcken besteht und der Reihe nach an den Serial Monitor gesendet. Die Endung Hex bedeutet, dass die vier Blöcke der UID als HEX-Zahl (also auch mit Buchstaben) ausgegeben wird
+            if(i < (mfrc522.uid.size-1))
+            {
+              Serial.print(":"); // Der Befehl „Serial.print(" ");“ sorgt dafür, dass zwischen den einzelnen ausgelesenen Blöcken ein Leerzeichen steht.
+            }
+            //Serial.print(mfrc522.uid.uidByte[i]);
+          }
+          Serial.println("");
+          if( ((mfrc522.uid.uidByte[0]) == (RFID_UID[0])) && ((mfrc522.uid.uidByte[1]) == (RFID_UID[1])) && ((mfrc522.uid.uidByte[2]) == (RFID_UID[2])) && ((mfrc522.uid.uidByte[3]) == (RFID_UID[3])))
+          {
+            if(Freigabe)
+            {
+              Serial.println("Freigabe gewollt gesperrt"); 
+              Freigabe = false;
+            }
+            else
+            {
+             Serial.println("Freigabe true"); 
+             Freigabe = true; 
+            }
+          }
+          else
+          {
+            Serial.println("Freigabe false"); 
+            Freigabe = false;
+          }
+        }
+      gotten_bt = BT.read();
+      BT.println("Bluetooth Rückmeldung : Hat folgenden Wert empfangen: ");
+      BT.println(gotten_bt);
+      Control(gotten_bt); //Fahren
+    }
+      if(!steht && vorwaerts)
+      {
+         if(TestPAUSE == 0)
+         {
+            TestPAUSE = millis() + 250;
+         };
+         
+         if(millis() >= TestPAUSE)
+         {
+           FOUND_OBJ_FRONT = SENSOR_FRONT.CheckForObjects(SafeDistance);
+           FOUND_OBJ_R = SENSOR_R.CheckForObjects(SafeDistance+10);
+           FOUND_OBJ_L = SENSOR_L.CheckForObjects(SafeDistance+10);
+  //         float testEntfernung = SENSOR_FRONT.SonarPingDistance();
+  //         BT.print("Entfernung: ");
+  //         BT.println(testEntfernung);
+           Ausweichen(FOUND_OBJ_FRONT, FOUND_OBJ_R, FOUND_OBJ_L);
+           TestPAUSE = millis() + 250;
+         };
+      };
+  };
 }
